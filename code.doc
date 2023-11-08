@@ -1,0 +1,94 @@
+from pyscipopt import Model, quicksum
+import numpy as np
+from itertools import product
+import json
+
+def instanSacy(n_customers, n_vehicles, max_energy_cost, max_time_cost):
+    A = (np.arange(1,n_customers+1)) #Set of customers
+
+    demand = {i:int(np.random.randint(100, 300, 1)[0]) for i in A} #Demand per customer
+
+    M = (np.arange(1,n_vehicles+1)) #Set of vehicles
+
+    load_capacity = {m:9073 for m in M}
+                    #{m:load_capacity for m in M} #Load_capacity per vehicle
+
+    energy_cost = {(i,j):int(np.random.randint(1, max_energy_cost, 1)[0]) for i,j in product(A,A) if j>i}#Energy cost per arc
+    
+    time_cost = {(i,j):int(np.random.randint(1, max_time_cost, 1)[0]) for i,j in product(A,A) if j>i}#Travel time cost per arc
+
+    return A, demand, M, load_capacity, energy_cost, time_cost
+
+    #Importing constant variables
+with open('./EVRP to LP/input_variables.json', 'r') as file:
+    input_variables = json.load(file)
+
+# print(input_variables["Ctt"])
+
+def sacystation(A, demand, M, load_capacity, energy_cost,time_cost):
+    """transp -- model for solving the transportation problem
+    Parameters:
+        A - set of customers
+        M - set of vehicles
+        energy_cost[i,j] - energy transportation cost on arc (i,j)
+        demand[i] - demand at customer i
+        load_capacity[m] - capacity of vehicle m
+
+    Returns a model, NOT ready to be solved.
+    """
+    
+    model = Model("sacystation")
+
+    #Creating decision variable binária
+    x = {}
+    for (i,j,m) in [(i,j,m) for i,j,m in product(A,A,M) if j>i]:
+        x[i,j,m] = model.addVar(vtype="C", name=f"x{(i,j,m)}")
+
+    # still need to add the constraints
+    #Restrics number of m leaving the depot
+    for m in M:
+        model.addCons(quicksum(x[0,j,m] for j in A if (0,j,m) in x) == 1)
+    
+    #Each customer is visited only once  
+    for i in A:
+        model.addCons(quicksum(x[i,j,m] for j in A for m in M if (j,m) in x) == 1)
+    
+    #Flow conservation constraint    
+    for j in A:
+        for m in M:
+            model.addCons(quicksum(x[i,j,m] for i in A if (i,j,m) in x) == quicksum(x[j,i,m] for j in A if (j,i,m) in x))
+    
+    #Demand conservation
+    for i in A:
+        model.addCons(quicksum(load_capacity[j,i] for j in A if (j,i) in x) - 
+                      quicksum(load_capacity[i,j] for i in A if (i,j) in x) == demand[i])
+    
+    # Objective - ONLY TRAVEL TIME
+    travel_time_cost = quicksum(input_variables["Ctt"]*time_cost[i,j]*x[i,j,m]  for (i,j,m) in x) 
+    model.setObjective(travel_time_cost, "minimize")
+
+    model.optimize()
+
+    model.data = x
+    
+    return model
+
+if __name__ == "__main__":
+    A, demand, M, load_capacity, energy_cost, time_cost = instanSacy(3,1,7,6)
+    model = sacystation(A, demand, M, load_capacity, energy_cost, time_cost)    
+    model.optimize()
+
+    if model.getStatus() == "optimal":
+        print("Optimal value:", model.getObjVal())
+    else:
+        print("Problem could not be solved to optimality")
+    
+    EPS = 1.e-6
+    x = model.data
+
+    for (i,j,m) in x:
+        if model.getVal(x[i,j,m]) > EPS:
+            print(f"sending {model.getVal(x[i,j])} from factory {j} to customer {i}")
+        print("Optimal value:", model.getObjVal())
+
+
