@@ -9,5 +9,6 @@
     "frontal_surface": 5,
     "vehicle_curb_w": 3629,
     "Qm": 9073,
-    "Avg_V": 80
+    "Avg_V": 80,
+    "ICp": 1 
 }
