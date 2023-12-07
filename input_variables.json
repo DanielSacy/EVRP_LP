@@ -1,6 +1,6 @@
 {
     "Ctt": 16,
-    "Ce": 0.12,
+    "HPstation_charge_cost": 0.57,
     "Cf": 4,
     "Charging_rate_kw": 225,
     "Battery_capacity_Wh": 90000,
