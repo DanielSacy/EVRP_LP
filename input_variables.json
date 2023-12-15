@@ -4,6 +4,7 @@
     "Cf": 4,
     "Charging_rate_kw": 225,
     "Battery_capacity_Wh": 90000,
+    "Min_battery": 0.20,
     "ef_truck": 0.48,
     "ef_EV": 0.7,
     "frontal_surface": 5,
